@@ -331,6 +331,13 @@ class HalReadPolicyTest {
         assertEquals(10, states.size); assertEquals(1, states.values.count { it == 1 })
         assertEquals(states, halProfileStates(tlv("BF2D", tlv("A0", entries.fold(byteArrayOf()) { a, b -> a + b }, true), true) + hex("9000")))
     }
+    @Test fun ignoresOptionalProfileFieldsBeyondTheTagList() {
+        val id = "980000000000000000F0"
+        val extra = tlv("E3", tlv("90", "nick".toByteArray()) + tlv("5A", hex(id)) + tlv("91", "sp".toByteArray()) + tlv("9F70", byteArrayOf(1)) + tlv("95", byteArrayOf(2)))
+        assertEquals(mapOf(hex(id).toList() to 1), halProfileStates(list(extra)))
+        val missingState = tlv("E3", tlv("5A", hex(id)) + tlv("90", "nick".toByteArray()))
+        try { halProfileStates(list(missingState)); fail("Profile without state admitted") } catch (_: IllegalArgumentException) {}
+    }
     @Test fun rejectsMalformedOrAmbiguousProfileLists() {
         val id = "980000000000000000F0"; val p = profile(id, 0)
         val invalid = listOf(

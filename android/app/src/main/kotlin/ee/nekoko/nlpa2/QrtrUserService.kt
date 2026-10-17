@@ -608,6 +608,7 @@ internal fun halSwitchRequest(iccid: ByteArray, eid: ByteArray, enable: Boolean)
 
 // Narrow BER parser for the minimum ProfileInfoList response. No indefinite
 // lengths, trailing data, duplicate identities/fields, or unknown states.
+// Optional fields a card returns beyond the tag list are ignored.
 internal fun halProfileStates(response: ByteArray): Map<List<Byte>, Int> {
     require(response.size in 7..(1024 * 1024) && response.takeLast(2) == listOf(0x90.toByte(), 0.toByte())) { "Invalid profile-list status" }
     val root = halBerFields(response.copyOfRange(0, response.size - 2)).single()
@@ -618,7 +619,7 @@ internal fun halProfileStates(response: ByteArray): Map<List<Byte>, Int> {
     for ((tag, value) in halBerFields(list.second)) {
         require(tag == 0xE3) { "Wrong profile tag" }
         val items = halBerFields(value)
-        require(items.size == 2 && items.map { it.first }.toSet() == setOf(0x5A, 0x9F70)) { "Missing or duplicate profile fields" }
+        require(items.count { it.first == 0x5A } == 1 && items.count { it.first == 0x9F70 } == 1) { "Missing or duplicate profile fields" }
         val iccid = items.single { it.first == 0x5A }.second
         halSwitchRequest(iccid, ByteArray(16), true) // Reuse BCD validation.
         val state = items.single { it.first == 0x9F70 }.second
